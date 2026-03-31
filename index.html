@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElevateHire</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:Poppins;
+  color:#fff;
+}
+
+/* BACKGROUND SLIDER */
+.bg-slider{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  z-index:-1;
+}
+
+.bg-slider img{
+  position:absolute;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition:opacity 2s ease-in-out;
+}
+
+.bg-slider img.active{
+  opacity:1;
+}
+
+/* HEADER */
+header{
+  display:flex;
+  justify-content:space-between;
+  padding:15px;
+  background:#111;
+}
+
+/* INPUTS */
+input,button,select{
+  padding:10px;
+  margin:8px;
+  border-radius:8px;
+  border:none;
+}
+
+/* MAIN LAYOUT */
+.main-container{
+  display:flex;
+  height:80vh;
+  align-items:center;
+  justify-content:center;
+}
+
+/* LEFT BOX */
+.left-box{
+  background:#6a0dad;
+  padding:40px;
+  border-radius:20px;
+  text-align:center;
+  box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+.left-box button{
+  background:white;
+  color:#6a0dad;
+  font-weight:bold;
+}
+
+/* DIVIDER */
+.divider{
+  width:3px;
+  height:300px;
+  background:white;
+  margin:0 40px;
+}
+
+/* RIGHT BOX */
+.right-box{
+  background:rgba(0,0,0,0.6);
+  padding:30px;
+  border-radius:15px;
+  backdrop-filter:blur(10px);
+}
+
+/* DASHBOARD */
+.section{
+  padding:20px;
+  text-align:center;
+}
+
+.card{
+  background:#1a1f2e;
+  margin:10px;
+  padding:15px;
+  border-radius:10px;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+
+<body>
+
+<div class="bg-slider">
+  <img src="images/bg1.jpg" class="active">
+  <img src="images/bg2.jpg">
+  <img src="images/bg3.jpg">
+  <img src="images/bg4.jpg">
+  <img src="images/bg5.jpg">
+</div>
+
+<header>
+<h2>ElevateHire</h2>
+
+<div>
+  <button onclick="goHome()">Switch Role</button>
+  <button onclick="logout()">Logout</button>
+</div>
+</header>
+
+<div class="main-container">
+
+<div class="left-box">
+<h3>Select Role</h3>
+<button onclick="showAdmin()">Admin Login</button>
+<button onclick="showUser()">Candidate Login</button>
+</div>
+
+<div class="divider"></div>
+
+<div class="right-box" id="auth">
+<h3>Login / Register</h3>
+<input id="email" placeholder="Email"><br>
+<input id="password" type="password" placeholder="Password"><br>
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+</div>
+
+</div>
+
+<div class="section" id="candidate" style="display:none">
+<h3>Candidate Dashboard</h3>
+
+<select id="education" onchange="showSkills()">
+<option value="">Select Education</option>
+<option value="be">B.E / B.Tech</option>
+<option value="bsc">B.Sc</option>
+<option value="ba">B.A</option>
+<option value="bcom">B.Com</option>
+<option value="bba">BBA</option>
+<option value="bdes">B.Des</option>
+<option value="diploma">Diploma</option>
+</select>
+
+<input id="year" placeholder="Passed Out Year">
+<div id="skillOptions"></div>
+<input id="skills" placeholder="Selected skills" readonly>
+<input type="file" id="resume">
+
+<button onclick="saveProfile()">Save Profile</button>
+
+<h4>Eligible Jobs</h4>
+<div id="eligibleJobs"></div>
+<h3>AI Career Advisor</h3>
+
+<input id="aiQuestion" placeholder=" career advice (ex: AI, design, data)">
+
+<button onclick="askAI()">Ask AI</button>
+
+<p id="aiAnswer"></p>
+</div>
+
+<div class="section" id="admin" style="display:none">
+<h3>Admin Dashboard</h3>
+<div id="adminData"></div>
+</div>
+
+<script>
+
+/* BACKGROUND SLIDER */
+const images=document.querySelectorAll('.bg-slider img');
+let index=0;
+setInterval(()=>{
+images[index].classList.remove('active');
+index=(index+1)%images.length;
+images[index].classList.add('active');
+},15000);
+
+/* DATA */
+let role="";
+let users=[];
+let applications=[];
+let currentUser=null;
+
+const ADMIN_EMAIL="prathishasugan19@gmail.com";
+const ADMIN_PASS="spy19190912";
+
+const educationSkills={
+be:["html","js","python","ai","cloud"],
+bsc:["research","lab","biology"],
+ba:["writing","media","communication"],
+bcom:["accounts","finance","excel"],
+bba:["management","communication"],
+bdes:["design","figma","photoshop"],
+diploma:["technical","machine","repair"]
+};
+function showSkills(){
+
+let edu=document.getElementById("education").value;
+
+let box=document.getElementById("skillOptions");
+
+box.innerHTML="";
+
+if(educationSkills[edu]){
+
+educationSkills[edu].forEach(skill=>{
+
+let label=document.createElement("label");
+
+label.style.display="block";
+
+label.innerHTML=`<input type="checkbox" value="${skill}" class="skillCheck" onchange="updateSkillBox()"> ${skill}`;
+
+box.appendChild(label);
+
+});
+
+}
+
+}
+function updateSkillBox(){
+
+let arr=[];
+
+document.querySelectorAll(".skillCheck:checked").forEach(cb=>{
+arr.push(cb.value);
+});
+
+document.getElementById("skills").value=arr.join(",");
+
+}
+const skillDB=[
+"python","java","html","css","js","ai","cloud",
+"figma","photoshop","data","excel","node","aws"
+];
+async function readResume(file){
+
+let reader=new FileReader();
+
+reader.onload=async function(){
+
+let typedarray=new Uint8Array(this.result);
+
+let pdf=await pdfjsLib.getDocument(typedarray).promise;
+
+let text="";
+
+for(let i=1;i<=pdf.numPages;i++){
+
+let page=await pdf.getPage(i);
+
+let content=await page.getTextContent();
+
+content.items.forEach(item=>{
+text+=item.str+" ";
+});
+
+}
+
+detectSkills(text.toLowerCase());
+
+};
+
+reader.readAsArrayBuffer(file);
+
+}
+function detectSkills(text){
+
+let detected=[];
+
+skillDB.forEach(skill=>{
+if(text.includes(skill)){
+detected.push(skill);
+}
+});
+
+document.getElementById("skills").value=detected.join(",");
+
+}
+const companies=["TCS","Infosys","Google","Amazon","Microsoft","Wipro","HCL","Zoho","Accenture","IBM"];
+
+const roles=[
+{title:"AI Engineer",skills:["ai","ml"]},
+{title:"Frontend Developer",skills:["html","js"]},
+{title:"Backend Developer",skills:["node","db"]},
+{title:"Full Stack Developer",skills:["html","js","node"]},
+{title:"Cloud Engineer",skills:["cloud","aws"]},
+{title:"DevOps Engineer",skills:["ci","cd"]},
+{title:"Data Scientist",skills:["python","data"]},
+{title:"Lab Technician",skills:["lab","chemistry"]},
+{title:"Biotech Analyst",skills:["biology","research"]},
+{title:"Content Writer",skills:["writing","content"]},
+{title:"Journalist",skills:["writing","media"]},
+{title:"Accountant",skills:["accounts","tally"]},
+{title:"Business Analyst",skills:["analysis","excel"]},
+{title:"UI/UX Designer",skills:["design","figma"]},
+{title:"Graphic Designer",skills:["photoshop","design"]}
+];
+
+let jobs=[];
+
+for(let i=0;i<100;i++){
+let role=roles[Math.floor(Math.random()*roles.length)];
+let company=companies[Math.floor(Math.random()*companies.length)];
+
+jobs.push({
+title:role.title,
+company:company,
+skills:role.skills
+});
+}
+
+/* ROLE */
+function showAdmin(){
+role="admin";
+alert("Admin Mode - please Login ");
+}
+
+function showUser(){
+role="user";
+alert("Candidate Mode - please Login ");
+}
+
+/* REGISTER */
+function register(){
+
+let emailValue=email.value;
+let passwordValue=password.value;
+
+let emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+if(!emailPattern.test(emailValue)){
+alert("Invalid Email ❌");
+return;
+}
+
+if(passwordValue.length<8){
+alert("Password must be at least 8 characters ❌");
+return;
+}
+
+let user={email:emailValue,password:passwordValue};
+users.push(user);
+
+alert("Registered Successfully ✅");
+}
+
+/* LOGIN */
+function login(){
+
+let found=users.find(u=>u.email===email.value && u.password===password.value);
+
+if(!found) return alert("Invalid ❌");
+
+if(role==="admin"){
+if(email.value!==ADMIN_EMAIL || password.value!==ADMIN_PASS){
+return alert("Admin access denied ❌");
+}
+}
+
+currentUser=found;
+
+auth.style.display="none";
+document.querySelector(".main-container").style.display="none";
+
+if(role==="admin"){
+admin.style.display="block";
+loadAdmin();
+applications.sort((a,b)=>b.percent-a.percent);
+}else{
+candidate.style.display="block";
+}
+
+alert("Login Success ✅");
+}
+
+/* PROFILE SAVE */
+function saveProfile(){
+
+let skillArr=[];
+
+document.querySelectorAll(".skillCheck:checked").forEach(cb=>{
+skillArr.push(cb.value);
+});
+let edu=document.getElementById("education").value;
+
+if(educationSkills[edu]){
+skillArr=skillArr.concat(educationSkills[edu]);
+}
+
+skillArr=[...new Set(skillArr)];
+
+let year=document.getElementById("year").value;
+
+let file=document.getElementById("resume").files[0];
+let resumeName=file?file.name:"No Resume";
+let resumeURL=file?URL.createObjectURL(file):"";
+if(file){
+readResume(file);
+}
+
+if(file){
+let name=file.name.toLowerCase();
+if(name.includes("python")) skillArr.push("python");
+if(name.includes("design")) skillArr.push("design");
+if(name.includes("data")) skillArr.push("data");
+if(name.includes("web")) skillArr.push("html","js");
+}
+
+document.getElementById("skills").value=skillArr.join(",");
+
+currentUser.profile={
+education:edu,
+year:year,
+skills:skillArr,
+resumeName,
+resumeURL
+};
+
+showJobs(skillArr);
+
+alert("Profile Saved ✅");
+}
+
+/* SHOW JOBS (MISSING FUNCTION FIXED) */
+function showJobs(skillArr){
+
+let box=document.getElementById("eligibleJobs");
+box.innerHTML="";
+
+let jobList = jobs.map(j=>{
+
+let match = j.skills.filter(s=>skillArr.includes(s));
+
+// Skill score
+let skillScore=(match.length/j.skills.length)*60;
+
+// education score
+let edu=document.getElementById("education").value;
+let year=document.getElementById("year").value;
+
+let eduScore=edu==="be"?20:10;
+let yearScore=year>2022?20:10;
+
+// final percentage
+let percent=Math.floor(skillScore+eduScore+yearScore);
+
+return {...j, percent};
+
+});
+jobList.sort((a,b)=>b.percent-a.percent);
+
+jobList.forEach(j=>{
+
+let d=document.createElement("div");
+d.className="card";
+
+d.innerHTML=`
+<h4>${j.company} - ${j.title}</h4>
+<p>Match: ${j.percent}%</p>
+<button onclick="applyJob('${j.title}',${j.percent})">Apply</button>
+`;
+
+box.appendChild(d);
+
+});
+}
+
+/* APPLY */
+function applyJob(title,percent){
+
+applications.push({
+user:currentUser.email,
+job:title,
+percent,
+resume:currentUser.profile?.resumeName || "No Resume",
+resumeURL:currentUser.profile?.resumeURL || ""
+});
+
+alert("Applied ✅");
+}
+
+/* ADMIN */
+function loadAdmin(){
+
+let box=document.getElementById("adminData");
+box.innerHTML="";
+
+applications.forEach(a=>{
+
+let d=document.createElement("div");
+d.className="card";
+
+d.innerHTML=`
+<p>${a.user}</p>
+<p>${a.job}</p>
+<p>${a.percent}%</p>
+<p><a href="${a.resumeURL}" target="_blank">${a.resume}</a></p>
+`;
+
+box.appendChild(d);
+
+});
+}
+
+/* LOGOUT */
+function logout(){
+location.reload();
+}
+
+function goHome(){
+candidate.style.display="none";
+admin.style.display="none";
+auth.style.display="block";
+document.querySelector(".main-container").style.display="flex";
+}
+function askAI(){
+
+let q=document.getElementById("aiQuestion").value.toLowerCase();
+
+let answer="";
+
+if(q.includes("ai") || q.includes("machine learning")){
+answer="Learn Python, Machine Learning, Data Science and AI tools.";
+
+}
+
+else if(q.includes("design") || q.includes("ui")){
+answer="Focus on UI/UX, Figma, Photoshop, Illustrator and creative portfolio.";
+
+}
+
+else if(q.includes("data") || q.includes("analysis")){
+answer="Data Analyst or Data Scientist career is good. Learn Python, SQL, Excel and PowerBI.";
+
+}
+
+else if(q.includes("web") || q.includes("frontend")){
+answer="Frontend or Full Stack Developer roles suit you. Learn HTML, CSS, JavaScript and React.";
+
+}
+
+else if(q.includes("job") || q.includes("career")){
+answer="Improve projects, internships and practical skills to get better jobs.";
+
+}
+
+else{
+answer="Improve communication, technical skills and internships.";
+}
+
+document.getElementById("aiAnswer").innerText=answer;
+
+}
+
+</script>
+
+</body>
+</html>
